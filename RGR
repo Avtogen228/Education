@@ -1,0 +1,180 @@
+using System;
+
+namespace RGR
+{
+    internal class Program
+    {
+        static void Main(string[] args)
+        {
+            int[] EvklidReturner(int number1, int number2)
+            {
+                int с;
+                if (number2 > number1)
+                {
+                    с = number1;
+                    number1 = number2;
+                    number2 = с;
+                }
+
+                int div = 0;
+                int[] massive1 = new int[] { number1, 1, 0 };
+                int[] massive2 = new int[] { number2, 0, 1 };
+                int[] resultMassive = new int[] { 0, 0, 0 };
+                while (massive2[0] != 0)
+                {
+                    div = massive1[0] / massive2[0];
+                    resultMassive[0] = massive1[0] - div * massive2[0];
+                    resultMassive[1] = massive1[1] - div * massive2[1];
+                    resultMassive[2] = massive1[2] - div * massive2[2];
+                    massive1[0] = massive2[0];
+                    massive1[1] = massive2[1];
+                    massive1[2] = massive2[2];
+                    massive2[0] = resultMassive[0];
+                    massive2[1] = resultMassive[1];
+                    massive2[2] = resultMassive[2];
+                }
+                return massive1;
+            }
+
+            bool isPrime(int number)
+            {
+                if (number <= 1) return false;
+                int square = Convert.ToInt32(Math.Pow(number, 0.5));
+
+                for (int i = 2; i <= square; ++i)
+                {
+                    if ((number % i) == 0) return false;
+                }
+
+                return true;
+            }
+
+            string FuncTo2(int number)
+            {
+                if (number == 1)
+                    return "1";
+                else
+                    return FuncTo2(number / 2) + (number % 2);
+            }
+
+            int Stepenator(int basis, int degree, int mod)
+            {
+                int grade = Convert.ToInt32(Math.Log(degree, 2));
+                int[] sequence = new int[grade + 1];
+                sequence[0] = basis;
+                for (int i = 1; i <= grade; i++)
+                {
+                    sequence[i] = ((sequence[i - 1] % mod) * sequence[i - 1] % mod) % mod;
+                }
+
+                int final = 1;
+                int j = 0;
+
+                for (int i = FuncTo2(degree).Length - 1; i >= 0; i--)
+                {
+                    if (FuncTo2(degree)[j] == '1')
+                    {
+                        final = (final * sequence[i]) % mod;
+                    }
+                    j++;
+                }
+                return final % mod;
+            }
+
+            Random rnd = new Random();
+            int P;
+            P = rnd.Next(12345);
+            while (!isPrime(P))
+            {
+                P = rnd.Next(12345);
+            }
+
+            int GeneratePrivateKey()
+            {
+                int privateKey;
+                privateKey = rnd.Next(2, 12344);
+                while (EvklidReturner(privateKey, P)[0] != 1)
+                {
+                    privateKey = rnd.Next(2, 12344);
+                }
+                return privateKey;
+            }
+
+            int S = GeneratePrivateKey();
+            int V = GeneratePublicKey();
+
+            int GeneratePublicKey()
+            {
+                return Stepenator(S, 2, P);
+            }
+
+            string[,] serverInfo = new string[1, 5];
+
+            void Regist(string login, int password)
+            {
+                serverInfo[0, 0] = login;
+                serverInfo[0, 1] = password.ToString();
+            }
+
+            int GenerateR()
+            {
+                int r;
+                r = rnd.Next(2, P - 1);
+                return r;
+            }
+
+            int GenerateX(int r)
+            {
+                return Stepenator(r, 2, P);
+            }
+
+            int GenerateE(int number)
+            {
+                if (number % 2 == 0) return 0;
+                else return 1;
+            }
+
+            int GenerateY(int r, int e)
+            {
+                return (r * (int)Math.Pow(S, e)) % P;
+            }
+
+            bool IsPasswordCorrect(int y, int x, int v, int e)
+            {
+                if ((y * y) % P == x * (int)Math.Pow(v, e) % P) return true; 
+                else return false;
+            }
+
+            string CheckProcess(int k)
+            {
+                for (int i = 0; i < k; i++)
+                {
+                    int r = GenerateR();
+
+                    int x = GenerateX(r);
+                    serverInfo[0, 2] = x.ToString();
+
+                    int e = GenerateE(rnd.Next(2, 12345));
+                    serverInfo[0, 3] = e.ToString();
+
+                    int y = GenerateY(r, e);
+                    serverInfo[0, 4] = y.ToString();
+
+                    //Console.WriteLine("V: " + V);
+                    //Console.WriteLine("r: " + r);
+                    //Console.WriteLine("x: " + x);
+                    //Console.WriteLine("e: " + e);
+                    //Console.WriteLine("y: " + y);
+                    //Console.WriteLine("S: " + S);
+                    //Console.WriteLine("P: " + P);
+
+                    if (!IsPasswordCorrect(y, x, V, e)) return "Пользователь не знает пароля";
+                }
+                return "Пользователь действительно знает пароль с вероятностью " + (1 - (1 / Math.Pow(2, k)));
+            }
+
+            Regist("abobus@gmail.com", V);
+            Console.WriteLine(CheckProcess(20));
+        }
+    }
+}

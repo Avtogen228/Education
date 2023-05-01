@@ -1,0 +1,902 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Security.Cryptography.X509Certificates;
+using System.Text;
+using System.Threading.Tasks;
+using System.IO;
+using System.Security.Cryptography;
+using System.Runtime.InteropServices;
+using System.Numerics;
+using System.Drawing;
+
+namespace _1stLabWork
+{
+    internal class Program
+    {
+        static void Main(string[] args)
+        {
+            int[] EvklidReturner(int number1, int number2)
+            {
+                int с;
+                if (number2 > number1)
+                {
+                    с = number1;
+                    number1 = number2;
+                    number2 = с;
+                }
+
+                int div = 0;
+                int[] massive1 = new int[] { number1, 1, 0 };
+                int[] massive2 = new int[] { number2, 0, 1 };
+                int[] resultMassive = new int[] { 0, 0, 0 };
+                while (massive2[0] != 0)
+                {
+                    div = massive1[0] / massive2[0];
+                    resultMassive[0] = massive1[0] - div * massive2[0];
+                    resultMassive[1] = massive1[1] - div * massive2[1];
+                    resultMassive[2] = massive1[2] - div * massive2[2];
+                    massive1[0] = massive2[0];
+                    massive1[1] = massive2[1];
+                    massive1[2] = massive2[2];
+                    massive2[0] = resultMassive[0];
+                    massive2[1] = resultMassive[1];
+                    massive2[2] = resultMassive[2];
+                }
+                return massive1;
+            }
+
+            string FuncTo2(int number)
+            {
+                if (number == 1)
+                    return "1";
+                else
+                    return FuncTo2(number / 2) + (number % 2);
+            }
+
+            string FuncTo21(BigInteger number)
+            {
+                if (number == 1)
+                    return "1";
+                else
+                    return FuncTo21(BigInteger.Divide(number, 2)) + (number % 2);
+            }
+
+            int Stepenator(int basis, int degree, int mod)
+            {
+                int grade = Convert.ToInt32(Math.Log(degree, 2));
+                int[] sequence = new int[grade + 1];
+                sequence[0] = basis;
+                for (int i = 1; i <= grade; i++)
+                {
+                    sequence[i] = ((sequence[i - 1] % mod) * sequence[i - 1] % mod) % mod;
+                }
+
+                int final = 1;
+                int j = 0;
+
+                for (int i = FuncTo2(degree).Length - 1; i >= 0; i--)
+                {
+                    if (FuncTo2(degree)[j] == '1')
+                    {
+                        final = (final * sequence[i]) % mod;
+                    }
+                    j++;
+                }
+                return final % mod;
+            }
+
+            int Stepenator1(int basis, BigInteger degree, int mod)
+            {
+                int grade = Convert.ToInt32(BigInteger.Log(degree, 2));
+                int[] sequence = new int[grade + 1];
+                sequence[0] = basis;
+                for (int i = 1; i <= grade; i++)
+                {
+                    sequence[i] = ((sequence[i - 1] % mod) * sequence[i - 1] % mod) % mod;
+                }
+
+                int final = 1;
+                int j = 0;
+
+                for (int i = FuncTo21(degree).Length - 1; i >= 0; i--)
+                {
+                    if (FuncTo21(degree)[j] == '1')
+                    {
+                        final = (final * sequence[i]) % mod;
+                    }
+                    j++;
+                }
+                return final % mod;
+            }
+
+            bool isPrime(int number)
+            {
+                if (number <= 1) return false;
+                int square = Convert.ToInt32(Math.Pow(number, 0.5));
+
+                for (int i = 2; i <= square; ++i)
+                {
+                    if ((number % i) == 0) return false;
+                }
+
+                return true;
+            }
+
+            int CommonKeyFinder()
+            {
+                Random rnd = new Random();
+                int Q = rnd.Next() + 1;
+                int P = 2 * Q + 1;
+
+                while (!isPrime(Q) || !isPrime(P))
+                {
+                    Q = rnd.Next() + 1;
+                    P = 2 * Q + 1;
+                }
+
+                int g = rnd.Next(P - 1) + 1;
+                while (Stepenator(g, Q, P) == 1)
+                {
+                    g = rnd.Next(P - 1) + 1;
+                }
+
+                int privateKey1 = rnd.Next(P - 1);
+                int privateKey2 = rnd.Next(P - 1);
+
+                while (privateKey1 == privateKey2)
+                {
+                    privateKey2 = rnd.Next(P - 1);
+                }
+
+                int publicKey1 = Stepenator(g, privateKey1, P);
+                int publicKey2 = Stepenator(g, privateKey2, P);
+
+                int commonKey1 = Stepenator(publicKey2, privateKey1, P);
+                int commonKey2 = Stepenator(publicKey1, privateKey2, P);
+
+                if (commonKey1 == commonKey2)
+                {
+                    return commonKey1;
+                }
+                else return 0;
+            }
+
+            int ShamirCipherRealizer(int message)
+            {
+                Random rnd = new Random();
+                int ceiling = 1024;
+                int P = rnd.Next(message + 1, ceiling);
+
+                while (!isPrime(P))
+                    P = rnd.Next(message + 1, ceiling);
+
+                int privateKeyX1 = rnd.Next(1, ceiling);
+                int privateKeyX2 = rnd.Next(1, ceiling);
+                int privateKeyY1, privateKeyY2;
+
+                while (EvklidReturner(privateKeyX1, P - 1)[0] != 1)
+                {
+                    privateKeyX1 = rnd.Next(1, ceiling);
+                }
+
+                if (privateKeyX1 > P - 1)
+                {
+                    if (EvklidReturner(privateKeyX1, P - 1)[1] > 0)
+                    {
+                        privateKeyY1 = EvklidReturner(privateKeyX1, P - 1)[1] % (P - 1);
+                    }
+                    else
+                    {
+                        privateKeyY1 = P - 1 + EvklidReturner(privateKeyX1, P - 1)[1];
+                    }
+
+                }
+                else
+                {
+                    if (EvklidReturner(privateKeyX1, P - 1)[2] > 0)
+                    {
+                        privateKeyY1 = EvklidReturner(privateKeyX1, P - 1)[2] % (P - 1);
+                    }
+                    else
+                    {
+                        privateKeyY1 = P - 1 + EvklidReturner(privateKeyX1, P - 1)[2];
+                    }
+                }
+
+                while (EvklidReturner(privateKeyX2, P - 1)[0] != 1)
+                {
+                    privateKeyX2 = rnd.Next(1, ceiling);
+                }
+
+                if (privateKeyX2 > P - 1)
+                {
+                    if (EvklidReturner(privateKeyX2, P - 1)[1] > 0)
+                    {
+                        privateKeyY2 = EvklidReturner(privateKeyX2, P - 1)[1] % (P - 1);
+                    }
+                    else
+                    {
+                        privateKeyY2 = P - 1 + EvklidReturner(privateKeyX2, P - 1)[1];
+                    }
+                }
+                else
+                {
+                    if (EvklidReturner(privateKeyX2, P - 1)[2] > 0)
+                    {
+                        privateKeyY2 = EvklidReturner(privateKeyX2, P - 1)[2] % (P - 1);
+                    }
+                    else
+                    {
+                        privateKeyY2 = P - 1 + EvklidReturner(privateKeyX2, P - 1)[2];
+                    }
+                }
+
+                int x1 = Stepenator(message, privateKeyX1, P);
+                int x2 = Stepenator(x1, privateKeyX2, P);
+                int x3 = Stepenator(x2, privateKeyY1, P);
+                int x4 = Stepenator(x3, privateKeyY2, P);
+
+                Console.WriteLine("message: " + message);
+                Console.WriteLine("x1: " + x1);
+                Console.WriteLine("x2: " + x2);
+
+                return x4;
+            }
+
+            int ElGamalCipherRealizer(int message)
+            {
+                Random rnd = new Random();
+                int ceiling = 2048;
+                int floor = 4;
+                int Q = rnd.Next(message, ceiling);
+                int P = 2 * Q + 1;
+
+                while (!isPrime(Q) || !isPrime(P))
+                {
+                    Q = rnd.Next(message, ceiling);
+                    P = 2 * Q + 1;
+                }
+
+                int g = rnd.Next(floor, P - 1);
+                while (Stepenator(g, Q, P) == 1)
+                {
+                    g = rnd.Next(2, P - 1);
+                }
+
+                int privateKeyX1 = rnd.Next(floor, P - 1);
+                int privateKeyX2 = rnd.Next(floor, P - 1);
+
+                int publicKeyY1 = Stepenator(g, privateKeyX1, P);
+                int publicKeyY2 = Stepenator(g, privateKeyX2, P);
+
+                int k = rnd.Next(floor, P - 1);
+                int r = Stepenator(g, k, P);
+                int e = (message * Stepenator(publicKeyY2, k, P)) % P;
+
+                Console.WriteLine("message: " + message);
+                Console.WriteLine("r: " + r);
+                Console.WriteLine("e: " + e);
+
+                return (e * Stepenator(r, P - 1 - privateKeyX2, P)) % P;
+            }
+
+            int RSACipherRealizer(int message)
+            {
+                Random rnd = new Random();
+                int ceiling = 256;
+                int floor = 4;
+                int Q1 = rnd.Next(floor, ceiling);
+                int P1 = rnd.Next(floor, ceiling);
+
+                while (!isPrime(Q1) || !isPrime(P1))
+                {
+                    Q1 = rnd.Next(floor, ceiling);
+                    P1 = rnd.Next(floor, ceiling);
+                }
+
+                int Q2 = rnd.Next(floor, ceiling);
+                int P2 = rnd.Next(floor, ceiling);
+
+                while (!isPrime(Q2) || !isPrime(P2))
+                {
+                    Q2 = rnd.Next(floor, ceiling);
+                    P2 = rnd.Next(floor, ceiling);
+                }
+
+                int N1 = P1 * Q1;
+                int fN1 = (P1 - 1) * (Q1 - 1);
+                int D1;
+
+                int N2 = P2 * Q2;
+                int fN2 = (P2 - 1) * (Q2 - 1);
+                int D2;
+
+                int[] messages = new int[3];
+                bool isMessageGreaterThanN2 = false;
+
+                if (message > N2)
+                {
+                    isMessageGreaterThanN2 = true;
+                    messages[0] = N2 - 2;
+                    messages[1] = message / N2;
+                    messages[2] = message % N2;
+                }
+
+                int C1 = rnd.Next(floor, fN1);
+
+                while (EvklidReturner(C1, fN1)[0] != 1)
+                {
+                    C1 = rnd.Next(floor, fN1);
+                }
+
+                if (C1 > fN1)
+                {
+                    if (EvklidReturner(C1, fN1)[1] > 0)
+                    {
+                        D1 = EvklidReturner(C1, fN1)[1] % fN1;
+                    }
+                    else
+                    {
+                        D1 = fN1 + EvklidReturner(C1, fN1)[1];
+                    }
+                }
+                else
+                {
+                    if (EvklidReturner(C1, fN1)[2] > 0)
+                    {
+                        D1 = EvklidReturner(C1, fN1)[2] % fN1;
+                    }
+                    else
+                    {
+                        D1 = fN1 + EvklidReturner(C1, fN1)[2];
+                    }
+                }
+
+                int C2 = rnd.Next(floor, fN2);
+
+                while (EvklidReturner(C2, fN2)[0] != 1)
+                {
+                    C2 = rnd.Next(floor, fN2);
+                }
+
+                if (C2 > fN2)
+                {
+                    if (EvklidReturner(C2, fN2)[1] > 0)
+                    {
+                        D2 = EvklidReturner(C2, fN2)[1] % fN2;
+                    }
+                    else
+                    {
+                        D2 = fN2 + EvklidReturner(C2, fN2)[1];
+                    }
+                }
+                else
+                {
+                    if (EvklidReturner(C2, fN2)[2] > 0)
+                    {
+                        D2 = EvklidReturner(C2, fN2)[2] % fN2;
+                    }
+                    else
+                    {
+                        D2 = fN2 + EvklidReturner(C2, fN2)[2];
+                    }
+                }
+
+                if (isMessageGreaterThanN2)
+                {
+                    int e1 = Stepenator(messages[0], D2, N2);
+                    int e2 = Stepenator(messages[2], D2, N2);
+
+                    Console.WriteLine("message: " + message);
+                    Console.WriteLine("e1: " + e1);
+                    Console.WriteLine("e2: " + e2);
+
+                    int m1 = Stepenator(e1, C2, N2);
+                    int m2 = Stepenator(e2, C2, N2);
+
+                    Console.WriteLine("m1: " + m1);
+                    Console.WriteLine("m2: " + m2);
+                    return (m1 + 2) * messages[1] + m2;
+                }
+                else
+                {
+                    int e = Stepenator(message, D2, N2);
+
+                    Console.WriteLine("message: " + message);
+                    Console.WriteLine("e: " + e);
+
+                    return Stepenator(e, C2, N2);
+                }
+            }
+
+            int VernamCipherRealizer(int message10)
+            {
+                string message2 = FuncTo2(message10);
+                Random rnd = new Random();
+                string k = Convert.ToString(rnd.Next(0, 2));
+
+                for (int i = 0; i < message2.Length - 1; i++)
+                {
+                    k = k + Convert.ToString(rnd.Next(0, 2));
+                }
+
+                string[] e = new string[k.Length];
+
+                for (int i = 0; i < k.Length; i++)
+                {
+                    if (message2[i] == k[i])
+                        e[i] = "0";
+                    else
+                        e[i] = "1";
+                }
+
+                string[] mMassive = new string[k.Length];
+
+                for (int i = 0; i < k.Length; i++)
+                {
+                    if (e[i] == Convert.ToString(k[i]))
+                        mMassive[i] = "0";
+                    else
+                        mMassive[i] = "1";
+                }
+
+                string finalMessage = "";
+                for (int i = 0; i < k.Length; i++)
+                    finalMessage = finalMessage + mMassive[i];
+
+
+                Console.WriteLine("e: ");
+                for (int i = 0; i < e.Length; i++)
+                    Console.Write(e[i]);
+
+                return Convert.ToInt32(finalMessage, 2);
+            }
+
+            int ElGamalWithESigCipherRealizer(int message)
+            {
+                Random rnd = new Random();
+                int ceiling = 2048;
+                int floor = 2;
+                int Q = rnd.Next(message, ceiling);
+                int P = 2 * Q + 1;
+
+                while (!isPrime(Q) || !isPrime(P))
+                {
+                    Q = rnd.Next(message, ceiling);
+                    P = 2 * Q + 1;
+                }
+
+                int g = rnd.Next(floor, P - 1);
+                while (Stepenator(g, Q, P) == 1)
+                {
+                    g = rnd.Next(2, P - 1);
+                }
+
+                int privateKeyX1 = rnd.Next(floor, P - 1);
+                int privateKeyX2 = rnd.Next(floor, P - 1);
+
+                int publicKeyY1 = Stepenator(g, privateKeyX1, P);
+                int publicKeyY2 = Stepenator(g, privateKeyX2, P);
+
+                int k = rnd.Next(floor, P - 1);
+
+                while (true)
+                {
+                    if (EvklidReturner(k, P - 1)[0] == 1) break;
+                    else k = rnd.Next(floor, P - 1);
+                }
+
+                byte[] tmpSource = ASCIIEncoding.ASCII.GetBytes(message.ToString());
+                byte[] tmpHash = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
+                BigInteger hash10 = new BigInteger(tmpHash);
+                hash10 = hash10 % (P - 1);
+                if (hash10 < 0) hash10 = P - 1 + hash10;
+
+                int r = Stepenator(g, k, P);
+
+                int invK = EvklidReturner(k, P - 1)[2];
+                if (invK < 0) invK = P - 1 + invK;
+
+                BigInteger S = ((hash10 - privateKeyX1 * r) * invK) % (P - 1);
+                if (S < 0) S = P - 1 + S;
+
+                int e = (message * Stepenator(publicKeyY2, k, P)) % P;
+
+                Console.WriteLine("message: " + message);
+                Console.WriteLine("r: " + r);
+                Console.WriteLine("S: " + S);
+
+                return (e * Stepenator(r, P - 1 - privateKeyX2, P)) % P;
+            }
+
+            bool ElGamalChecker(int publicKeyY1, int r, int S, int g, int message, int P)
+            {
+                byte[] tmpSource = ASCIIEncoding.ASCII.GetBytes(message.ToString());
+                byte[] tmpHash = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
+                BigInteger hash10 = new BigInteger(tmpHash);
+                hash10 = hash10 % (P - 1);
+                if (hash10 < 0) hash10 = P - 1 + hash10;
+
+                if ((Stepenator(publicKeyY1, r, P) * Stepenator(r, S, P) % P) == Stepenator1(g, hash10, P))
+                    return true;
+                else return false;
+            }
+
+            int RSAWithESigCipherRealizer(int message)
+            {
+                Random rnd = new Random();
+                int ceiling = 256;
+                int floor = 2;
+                int Q1 = rnd.Next(floor, ceiling);
+                int P1 = rnd.Next(floor, ceiling);
+
+                while (!isPrime(Q1) || !isPrime(P1) || P1 == Q1)
+                {
+                    Q1 = rnd.Next(floor, ceiling);
+                    P1 = rnd.Next(floor, ceiling);
+                }
+
+                int Q2 = rnd.Next(floor, ceiling);
+                int P2 = rnd.Next(floor, ceiling);
+
+                while (!isPrime(Q2) || !isPrime(P2) || P2 == Q2)
+                {
+                    Q2 = rnd.Next(floor, ceiling);
+                    P2 = rnd.Next(floor, ceiling);
+                }
+
+                int N1 = P1 * Q1;
+                int fN1 = (P1 - 1) * (Q1 - 1);
+                int D1;
+
+                int N2 = P2 * Q2;
+                int fN2 = (P2 - 1) * (Q2 - 1);
+                int D2;
+
+                int[] messages = new int[3];
+                bool isMessageGreaterThanN2 = false;
+
+                if (message > N2)
+                {
+                    isMessageGreaterThanN2 = true;
+                    messages[0] = N2 - 2;
+                    messages[1] = message / N2;
+                    messages[2] = message % N2;
+                }
+
+                int C1 = rnd.Next(floor, fN1);
+
+                while (EvklidReturner(C1, fN1)[0] != 1)
+                {
+                    C1 = rnd.Next(floor, fN1);
+                }
+
+                if (EvklidReturner(C1, fN1)[2] > 0)
+                {
+                    D1 = EvklidReturner(C1, fN1)[2] % fN1;
+                }
+                else
+                {
+                    D1 = fN1 + EvklidReturner(C1, fN1)[2];
+                }
+
+                int C2 = rnd.Next(floor, fN2);
+
+                while (EvklidReturner(C2, fN2)[0] != 1)
+                {
+                    C2 = rnd.Next(floor, fN2);
+                }
+
+                if (EvklidReturner(C2, fN2)[2] > 0)
+                {
+                    D2 = EvklidReturner(C2, fN2)[2] % fN2;
+                }
+                else
+                {
+                    D2 = fN2 + EvklidReturner(C2, fN2)[2];
+                }
+
+                byte[] tmpSource = ASCIIEncoding.ASCII.GetBytes(message.ToString());
+                byte[] tmpHash = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
+                BigInteger hash10 = new BigInteger(tmpHash);
+                hash10 = hash10 % N1;
+                if (hash10 < 0) hash10 = N1 + hash10;
+
+                int S = Stepenator((int)hash10, C1, N1);
+                if (S < 0) S = N1 + S;
+
+                if (isMessageGreaterThanN2)
+                {
+                    int e1 = Stepenator(messages[0], D2, N2);
+                    int e2 = Stepenator(messages[2], D2, N2);
+
+                    Console.WriteLine("message: " + message);
+                    Console.WriteLine("S: " + S);
+                    //Console.WriteLine("e1: " + e1);
+                    //Console.WriteLine("e2: " + e2);
+
+                    int m1 = Stepenator(e1, C2, N2);
+                    int m2 = Stepenator(e2, C2, N2);
+
+                    //Console.WriteLine("m1: " + m1);
+                    //Console.WriteLine("m2: " + m2);
+                    return (m1 + 2) * messages[1] + m2;
+                }
+                else
+                {
+                    int e = Stepenator(message, D2, N2);
+
+                    Console.WriteLine("message: " + message);
+                    Console.WriteLine("S: " + S);
+                    //Console.WriteLine("e: " + e);
+
+                    return Stepenator(e, C2, N2);
+                }
+            }
+
+            bool RSAChecker(int S, int D1, int N1, int message)
+            {
+                byte[] tmpSource = ASCIIEncoding.ASCII.GetBytes(message.ToString());
+                byte[] tmpHash = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
+                BigInteger hash10 = new BigInteger(tmpHash);
+                hash10 = hash10 % N1;
+                if (hash10 < 0) hash10 = N1 + hash10;
+
+                if (Stepenator(S, D1, N1) == hash10) return true;
+                else return false;
+            }
+
+            void GOSTWithESigCipherRealizer(int message)
+            {
+                Random rnd = new Random();
+                int ceiling = 100;
+                int floor = 2;
+                int Q = rnd.Next(message, ceiling);
+                int b = rnd.Next(Q, ceiling * 2);
+                int P = b * Q + 1;
+
+                while (!isPrime(Q) || !isPrime(P))
+                {
+                    Q = rnd.Next(message, ceiling);
+                    b = rnd.Next(Q, ceiling * 2);
+                    P = b * Q + 1;
+                }
+
+                int g = rnd.Next(floor, P - 1);
+                int a = Stepenator(g, b, P);
+                while (a <= 1)
+                {
+                    g = rnd.Next(floor, P - 1);
+                    a = Stepenator(g, b, P);
+                }
+
+                byte[] tmpSource = ASCIIEncoding.ASCII.GetBytes(message.ToString());
+                byte[] tmpHash = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
+                BigInteger hash10 = new BigInteger(tmpHash);
+                hash10 = hash10 % Q;
+                if (hash10 < 0) hash10 = Q + hash10;
+
+                int privateKeyX1 = rnd.Next(floor, P - 1);
+                //int privateKeyX2 = rnd.Next(floor, P - 1);
+
+                int publicKeyY1 = Stepenator(a, privateKeyX1, P);
+                //int publicKeyY2 = Stepenator(a, privateKeyX2, P);
+                if (publicKeyY1 < 0) publicKeyY1 = publicKeyY1 + P;
+
+                int k = rnd.Next(floor, Q);
+                int r = Stepenator(a, k, P) % Q;
+                int S = (k * (int)hash10 + privateKeyX1 * r) % Q;
+
+                while (r == 0 || S == 0)
+                {
+                    k = rnd.Next(floor, Q);
+                    r = Stepenator(a, k, P) % Q;
+                    S = (k * (int)hash10 + privateKeyX1 * r) % Q;
+                }
+
+                if (S < 0) S = Q + S;
+                if (r < 0) r = Q + r;
+
+                Console.WriteLine("message: " + message);
+                Console.WriteLine("r: " + r);
+                Console.WriteLine("S: " + S);
+
+                //int e = (message * Stepenator(publicKeyY2, k, P)) % P;
+                //Console.WriteLine("e: " + e);
+                //return (e * Stepenator(r, P - 1 - privateKeyX2, P)) % P;
+            }
+
+            bool GOSTChecker(int message, int r, int S, int Q, int a, int publicKeyY1, int P)
+            {
+                if (r < 0 || S > Q) return false;
+
+                byte[] tmpSource = ASCIIEncoding.ASCII.GetBytes(message.ToString());
+                byte[] tmpHash = new MD5CryptoServiceProvider().ComputeHash(tmpSource);
+                BigInteger hash10 = new BigInteger(tmpHash);
+                hash10 = hash10 % Q;
+                if (hash10 < 0) hash10 = Q + hash10;
+
+                int invHash10 = EvklidReturner((int)hash10, Q)[2];
+                if (invHash10 < 0) invHash10 = Q + invHash10;
+
+                int U1 = (S * invHash10) % Q;
+                int U2 = ((-r * invHash10) % Q) + Q;
+
+                int V = ((Stepenator(a, U1, P) * Stepenator(publicKeyY1, U2, P)) % P) % Q;
+                if (V < 0) V = Q + V;
+
+                if (V == r) return true;
+                else return false;
+            }
+
+            void MentalPokerRealizer(int players, int cardsInGame, int cardsInHand)
+            {
+                Random rnd = new Random();
+                int[] deck = new int[52];
+                int[] board = new int[cardsInGame];
+                int[,] playersCardsEN = new int[players, cardsInHand];
+                int[,] playersCardsDE = new int[players, cardsInHand];
+                int ceiling = 1024;
+
+                int Q = rnd.Next(2, ceiling);
+                int P = 2 * Q + 1;
+
+                while (!isPrime(Q) || !isPrime(P))
+                {
+                    Q = rnd.Next(2, ceiling);
+                    P = 2 * Q + 1;
+                }
+
+                for (int i = 0; i < deck.Length; i++)
+                {
+                    deck[i] = rnd.Next(2, P - 1);
+                }
+
+                int[] privateKeys1 = new int[players];
+                int[] privateKeys2 = new int[players];
+
+                for (int i = 0; i < privateKeys1.Length; i++)
+                {
+                    privateKeys1[i] = rnd.Next(2, P - 1);
+                }
+
+                for (int i = 0; i < privateKeys1.Length; i++)
+                {
+                    while (EvklidReturner(privateKeys1[i], P - 1)[0] != 1)
+                    {
+                        privateKeys1[i] = rnd.Next(2, P - 1);
+                    }
+                }
+
+                for (int i = 0; i < privateKeys1.Length; i++)
+                {
+                    if (EvklidReturner(privateKeys1[i], P - 1)[2] > 0)
+                    {
+                        privateKeys2[i] = EvklidReturner(privateKeys1[i], P - 1)[2] % (P - 1);
+                    }
+                    else
+                    {
+                        privateKeys2[i] = P - 1 + EvklidReturner(privateKeys1[i], P - 1)[2];
+                    }
+                }
+
+                //for (int i = 0; i < 2; i++)
+                //{
+                //    Console.WriteLine("private1 " + (i+1) + ": " + privateKeys1[i]);
+                //    Console.WriteLine("private2 " + (i+1) + ": " + privateKeys2[i]);
+                //    Console.WriteLine(EvklidReturner(privateKeys2[i] * privateKeys1[i], P - 1)[0]);
+                //    Console.WriteLine();
+                //}
+
+                //Console.WriteLine("P-1: " + (P - 1));
+                //Console.WriteLine("Q: " + Q);
+                //Console.WriteLine("P: " + P);
+                //Console.WriteLine();
+
+                for (int i = 0; i < deck.Length; i++)
+                    Console.WriteLine("deck изначальная " + (i + 1) + ": " + deck[i]);
+
+                Console.WriteLine();
+
+                for (int i = 0; i < cardsInGame; i++)
+                {
+                    board[i] = deck[i];
+                    deck[i] = 0;
+                }
+
+                for (int i = 0; i < board.Length; i++)
+                    Console.WriteLine("board " + (i + 1) + ": " + board[i]);
+
+
+                for (int i = 0; i < players; i++)
+                {
+                    for (int j = 0; j < deck.Length; j++)
+                    {
+                        deck[j] = Stepenator(deck[j], privateKeys1[i], P);
+                        //Console.WriteLine("deck до перемешивания, но после шифрации " + (j + 1) + ": " + deck[j]);
+                    }
+
+                    for (int m = deck.Length - 1; m >= 1; m--)
+                    {
+                        int n = rnd.Next(m + 1);
+                        var temp = deck[n];
+                        deck[n] = deck[m];
+                        deck[m] = temp;
+                    }
+                }
+                //Console.WriteLine();
+
+
+                for (int i = 0; i < deck.Length; i++)
+                    Console.WriteLine("deck после перемешивания и шифрации " + (i + 1) + ": " + deck[i]);
+
+                Console.WriteLine();
+
+                int lastDrawnCard = 0;
+                for (int j = 0; j < players; j++)
+                {
+                    for (int i = 0; i < cardsInHand; i++)
+                    {
+                        playersCardsEN[j, i] = deck[lastDrawnCard];
+                        while (deck[lastDrawnCard] == 0)
+                        {
+                            lastDrawnCard++;
+                            playersCardsEN[j, i] = deck[lastDrawnCard];
+                        }
+                        deck[lastDrawnCard] = 0;
+                        Console.WriteLine("игрок № " + (j + 1));
+                        Console.WriteLine("карта № " + (i + 1) + ": " + playersCardsEN[j, i]);
+                        Console.WriteLine();
+                        lastDrawnCard++;
+                    }
+                }
+
+                //for (int i = 0; i < deck.Length; i++)
+                //    Console.WriteLine("deck после отобранных карт " + (i + 1) + ": " + deck[i]);
+
+                //Console.WriteLine();
+
+                int playerN = 0;
+                for (; playerN < players;)
+                {
+                    for (int i = 0; i < players; i++)
+                    {
+                        if (playerN != i)
+                        {
+                            for (int k = 0; k < cardsInHand; k++)
+                            {
+                                playersCardsEN[playerN, k] = Stepenator(playersCardsEN[playerN, k], privateKeys2[i], P);
+                            }
+                        }
+
+                        if (i + 1 == players)
+                        {
+                            playerN++;
+                        }
+                    }
+                }
+
+                for (int i = 0; i < players; i++)
+                {
+                    for (int j = 0; j < cardsInHand; j++)
+                    {
+                        playersCardsDE[i, j] = Stepenator(playersCardsEN[i, j], privateKeys2[i], P);
+                    }
+                }
+
+                for (int i = 0; i < players; i++)
+                    for (int j = 0; j < cardsInHand; j++)
+                        Console.WriteLine("карта №" + (j + 1) + " игрока №" + (i + 1) + " " + playersCardsDE[i, j]);
+            }
+
+            ElGamalWithESigCipherRealizer(22);
+            Console.WriteLine();
+            RSAWithESigCipherRealizer(15);
+            Console.WriteLine();
+            GOSTWithESigCipherRealizer(10);
+
+            //MentalPokerRealizer(4, 5, 2);
+        }
+    }
+}
